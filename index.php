@@ -1,5 +1,5 @@
 <?php
-	// credentials
+	// include configuration file
 	require_once 'config.php';
 
 	function getInventory($steamids, $app_id, $context_id, $count) {
@@ -13,11 +13,37 @@
 	}
 
 	function postToForum($forum_key, $cards, $trade_url) {
-		$output = '(Post to: "https://steamcommunity.com/app/'.$forum_key.'/tradingforum/")<br>';
-		$output .= 'I am trading the following cards: '.$cards.'<br>';
-		$output .= 'If you are interested please send me a <a href="'.$trade_url.'">trade offer</a><br><br>';
+		// login to steam account (set in config)
+		$session_id = '';
 
-		return $output;
+		// generate post content
+		$content_hl = '[H] '.$cards.' [W] cards to complete my sets. ';
+		$content = 'If you are interested please send me a trade offer --> '.$trade_url;
+
+		// configure POST request to steam forums
+		$url = 'https://steamcommunity.com/';
+		$subforum_id = 'Trading_18446744073709551615'; // post to trading subforum
+
+		$data = array('sessionid' => $session_id, 'appid' => $forum_key, 'topic' => $content_hl, 'text' => $content_hl.$content, 'subforum' => $subforum_id);
+
+		$options = array(
+			'http' => array(
+				'header' => "Content-type: application/x-www-form-urlencoded",
+				'method' => 'POST',
+				'content' => http_build_query($data)
+			)
+		);
+
+		// send POST request
+		$context = stream_context_create($options);
+		$result = file_get_contents($url, false, $context);
+
+		// check for errors during POST request
+		if ($result === false) {
+			$result = 'Error while submitting to trade forum';
+		}
+
+		return $result;
 	}
 
 	// query for inventory
@@ -41,10 +67,12 @@
 	// trigger post to form
 	foreach ($card_sets as $key => $value) {
 		foreach ($value as $name) {
-			$cards .= '"'.$name.'",&nbsp;';
+			$cards .= '"'.$name.'", ';
 		}
 
 		echo postToForum($key, $cards, $trade_url);
+
+		// reset variable
 		$cards = '';
 	}
 ?>
